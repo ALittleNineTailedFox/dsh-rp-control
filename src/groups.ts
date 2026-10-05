@@ -18,71 +18,6 @@ import { resolveRpConfig, type GroupSpec, type ItemSpec, type RpConfig } from '.
 
 export const BUILTIN_GROUPS: readonly GroupSpec[] = [
   {
-    "id": "style",
-    "name": "文风",
-    "desc": "写作文风模板，可多选自由组合",
-    "items": [
-      {
-        "id": "style-plain",
-        "name": "平实白描",
-        "desc": "示例条目：克制的白描文风",
-        "text": "【示例条目 · 平实白描】\n把这里替换成你自己的文风指令。示例：\n- 以白描为主，名词与动词推进，克制形容词与比喻\n- 每句对白单独成行，用「」包裹，不写“他说”一类引语\n- 固定在同一角色的主观视角，只写他看到、听到、触到的东西\n- 情绪用动作、物件、光影呈现，不直白点破\n- 长短段落交错，紧张处改用短句分行"
-      },
-      {
-        "id": "style-lyrical",
-        "name": "细腻抒情",
-        "desc": "示例条目：重情绪渲染与画面感",
-        "text": "【示例条目 · 细腻抒情】\n把这里替换成你自己的文风指令。示例：\n- 重视情绪渲染与画面感，允许长句铺陈\n- 场景从五感切入：声音、温度、气味、光线\n- 情绪层层递进：细微反常 → 动作停顿 → 神色变化\n- 浓情绪段落之后接一段日常，避免读者疲劳"
-      }
-    ]
-  },
-  {
-    "id": "nsfw",
-    "name": "情色",
-    "desc": "成人向描写的写法要求",
-    "items": [
-      {
-        "id": "nsfw-lexicon",
-        "name": "描写示例",
-        "desc": "示例条目：成人向场景的写法要求",
-        "text": "【示例条目 · 成人向描写】\n把这里替换成你自己的写法要求。示例：\n- 写具体感受与身体反应，不用抽象形容词下判断\n- 节奏随情节推进变化，不堆砌同义词\n- 角色语气与性格保持一贯，不因场景改变人格"
-      }
-    ]
-  },
-  {
-    "id": "writing",
-    "name": "通用写作",
-    "desc": "不分文风都成立的基本要求",
-    "items": [
-      {
-        "id": "writing-core",
-        "name": "写作核心要求",
-        "desc": "示例条目：视角、节奏与角色塑造的基本约束",
-        "text": "【示例条目 · 通用写作要求】\n- 只写场景中人物能感知到的东西，不做上帝视角的总结与评价\n- 时间、距离、数量通过人物感知和参照物呈现\n- 情绪由动作和可观察的表现传达\n- 同一场景避免重复此前用过的写法\n- 角色是普通人：设定是倾向，不是每轮都要表演标签"
-      }
-    ]
-  },
-  {
-    "id": "body",
-    "name": "身体",
-    "desc": "当前扮演对象的外形与性格设定（互斥，同时只生效一条）",
-    "exclusive": true,
-    "items": [
-      {
-        "id": "body-a",
-        "name": "示例 A",
-        "desc": "示例条目：一个外形 + 性格锚点",
-        "text": "【当前身体：示例 A】\n把这里换成当前扮演对象的外形与性格设定。示例：\n性格：……\n外形锚点（出图时照抄这一行）：silver hair, short hair, green eyes, black coat, ..."
-      },
-      {
-        "id": "body-b",
-        "name": "示例 B",
-        "desc": "示例条目：换一个外形 + 性格锚点",
-        "text": "【当前身体：示例 B】\n把这里换成另一个扮演对象。示例：\n性格：……\n外形锚点（出图时照抄这一行）：brown hair, twin tails, amber eyes, white dress, ...\n⚠️ 出图姿势要与当前身体匹配。"
-      }
-    ]
-  },
-  {
     "id": "persona",
     "name": "人格",
     "desc": "系统提示词正文，互斥；可配 modelPersona 随模型切换",
@@ -91,33 +26,14 @@ export const BUILTIN_GROUPS: readonly GroupSpec[] = [
       {
         "id": "persona-example",
         "name": "示例人设",
-        "desc": "示例条目：正文放在随包的 personas/example.md 里",
+        "desc": "正文放在随包的 personas/example.md 里，复制一份改成你自己的",
         "textFile": "./personas/example.md"
       },
       {
         "id": "persona-inline",
         "name": "内联示例",
-        "desc": "示例条目：不引用外部文件，正文直接写在条目里",
+        "desc": "不引用外部文件，正文直接写在条目里",
         "text": "【示例人设 · 内联写法】\n你是一个……。\n（这一条演示把正文直接写在条目里的写法；人设较长时建议改用 textFile 指向 personas/ 下的 md 文件，便于单独维护。）"
-      }
-    ]
-  },
-  {
-    "id": "image",
-    "name": "出图",
-    "desc": "什么时候出图、prompt 怎么写、外形 tag 从哪来",
-    "items": [
-      {
-        "id": "image-rules",
-        "name": "出图规则",
-        "desc": "示例条目：出图时机 / prompt 写法 / 审图尺度",
-        "text": "【示例条目 · 出图规则】\n把这里替换成你自己的出图规则。示例：\n- 什么时候出图：……\n- prompt 怎么写：……\n- 审图尺度：……"
-      },
-      {
-        "id": "image-anchor",
-        "name": "出图锚点",
-        "desc": "示例条目：外形 tag 与姿势匹配规则",
-        "text": "【示例条目 · 出图锚点（照抄）】\n角色 A：blue hair, long hair, blue eyes, white dress, ...\n角色 B：照抄「身体」那一组注入的外形锚点。\n⚠️ 出图姿势要跟当前身体匹配。"
       }
     ]
   }

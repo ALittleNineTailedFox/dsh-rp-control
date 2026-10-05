@@ -1,72 +1,28 @@
 {
   "groups": [
     {
-      "id": "style",
-      "name": "文风",
-      "defaultItems": ["style-plain", "style-lyrical"],
-      "items": [
-        {
-          "id": "style-plain",
-          "name": "平实白描",
-          "text": "这里是该条目的正文（注入原文）……"
-        },
-        {
-          "id": "style-lyrical",
-          "name": "细腻抒情",
-          "text": "第二条正文……\n（defaultItems 可以列多个 id：这一组没被碰过时，它们全部都开。）"
-        }
-      ]
-    },
-    {
-      "id": "body",
-      "name": "身体",
-      "exclusive": true,
-      "defaultItems": ["body-a"],
-      "items": [
-        {
-          "id": "body-a",
-          "name": "示例 A",
-          "text": "【当前身体：示例 A】\n……设定说明……\n出图时外形锚点照抄这一段：silver hair, short hair, green eyes, ……"
-        },
-        {
-          "id": "body-b",
-          "name": "示例 B",
-          "text": "【当前身体：示例 B】\n……设定说明……\n出图时外形锚点照抄这一段：brown hair, twin tails, amber eyes, ……"
-        }
-      ]
-    },
-    {
       "id": "persona",
       "name": "人格",
       "exclusive": true,
+      "defaultItems": ["persona-example"],
       "items": [
         {
           "id": "persona-example",
           "name": "示例人设",
+          "desc": "正文放在随包的 personas/example.md 里，复制一份改成你自己的",
           "textFile": "./personas/example.md"
         },
         {
           "id": "persona-notes",
           "name": "家目录里的一份人设",
+          "desc": "textFile 的 $DSH_HOME 写法",
           "textFile": "$DSH_HOME/notes/persona-b.md"
-        }
-      ]
-    },
-    {
-      "id": "image",
-      "name": "出图",
-      "items": [
-        {
-          "id": "image-rules",
-          "name": "出图规则",
-          "desc": "什么时候出图 / prompt 写法 / 审图尺度",
-          "text": "【这一轮的出图规则】\n……出图规则正文……"
         },
         {
-          "id": "image-anchor",
-          "name": "出图锚点",
-          "desc": "角色外形 tag + 姿势与身体匹配规则",
-          "text": "【出图锚点（照抄）】\n……外形锚点……"
+          "id": "persona-inline",
+          "name": "内联示例",
+          "desc": "不引用外部文件，正文直接写在条目里",
+          "text": "【示例人设 · 内联写法】\n你是一个……。\n（人设较长时建议改用 textFile 指向 personas/ 下的 md 文件，便于单独维护。）"
         }
       ]
     }

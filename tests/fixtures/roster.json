@@ -1,0 +1,37 @@
+{
+  "groups": [
+    {
+      "id": "style",
+      "name": "文风",
+      "items": [
+        { "id": "style-a", "name": "文风甲", "text": "【文风甲】" },
+        { "id": "style-b", "name": "文风乙", "text": "【文风乙】" }
+      ]
+    },
+    {
+      "id": "radio",
+      "name": "互斥组",
+      "exclusive": true,
+      "items": [
+        { "id": "radio-a", "name": "互斥甲", "text": "【互斥甲】" },
+        { "id": "radio-b", "name": "互斥乙", "text": "【互斥乙】" }
+      ]
+    },
+    {
+      "id": "persona",
+      "name": "人格",
+      "exclusive": true,
+      "items": [
+        { "id": "persona-a", "name": "人设甲", "text": "【人设甲】" },
+        { "id": "persona-b", "name": "人设乙", "text": "【人设乙】" }
+      ]
+    },
+    {
+      "id": "tail",
+      "name": "末组",
+      "items": [
+        { "id": "tail-a", "name": "末组甲", "text": "【末组甲】" }
+      ]
+    }
+  ]
+}

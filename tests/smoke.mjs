@@ -12,7 +12,7 @@
  *
  * Runs against the built bundle with a minimal cordis-shaped context.
  */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -41,7 +41,13 @@ const ctx = {
 }
 
 const smokeDir = mkdtempSync(join(tmpdir(), 'dsh-rp-smoke-'))
-apply(ctx, { path: join(smokeDir, 'nope.json'), statePath: join(smokeDir, 'state.json') })
+
+// The multi-group behaviour below runs against a fixture roster, not the shipped
+// built-ins: the built-in roster is deliberately kept to the single persona
+// group, so it cannot stand in for a multi-group document.
+const fixturePath = join(smokeDir, 'roster.json')
+cpSync(new URL('./fixtures/roster.json', import.meta.url), fixturePath)
+apply(ctx, { path: fixturePath, statePath: join(smokeDir, 'state.json') })
 
 let failures = 0
 function check (name, condition, detail) {
@@ -116,23 +122,63 @@ check('GET returns selection + groups',
 
 const groupIds = Array.isArray(first.groups) ? first.groups.map(g => g.id) : []
 const itemCount = Array.isArray(first.groups) ? first.groups.reduce((n, g) => n + g.items.length, 0) : 0
-check('6 groups in order', groupIds.join(',') === 'style,nsfw,writing,body,persona,image', JSON.stringify(groupIds))
-check('10 items', itemCount === 10, String(itemCount))
+check('the fixture carries its 4 groups in order',
+  groupIds.join(',') === 'style,radio,persona,tail', JSON.stringify(groupIds))
+check('the fixture carries 7 items', itemCount === 7, String(itemCount))
 
-const bodyGroup = Array.isArray(first.groups) ? first.groups.find(g => g.id === 'body') : undefined
-check('body group is exclusive', bodyGroup?.exclusive === true)
-check('body group has no defaults', bodyGroup?.defaultItems === undefined, JSON.stringify(bodyGroup?.defaultItems))
+const radioGroup = Array.isArray(first.groups) ? first.groups.find(g => g.id === 'radio') : undefined
+check('the radio group is exclusive', radioGroup?.exclusive === true)
+check('the radio group has no defaults', radioGroup?.defaultItems === undefined, JSON.stringify(radioGroup?.defaultItems))
 check('no group carries defaults',
   first.groups.every(g => g.defaultItems === undefined && g.defaultItem === undefined),
   JSON.stringify(first.groups.map(g => [g.id, g.defaultItems ?? g.defaultItem])))
 
-// The persona group is exclusive and reads its body from a file shipped inside
-// this package: `./personas/example.md` is resolved against the plugin root, so the
-// body is maintained as an ordinary markdown file and swapped per model.
-const persona = Array.isArray(first.groups) ? first.groups.find(g => g.id === 'persona') : undefined
-check('persona group is exclusive', persona?.exclusive === true)
-check('persona group has two items', persona?.items.length === 2, JSON.stringify(persona?.items?.map(i => i.id)))
-const shippedPersona = persona?.items?.[0]
+// The fixture's persona group — the ids the model→persona tests are written
+// against, and the group the persona bindings must name an item of.
+const fixturePersona = Array.isArray(first.groups) ? first.groups.find(g => g.id === 'persona') : undefined
+check('fixture persona group is exclusive', fixturePersona?.exclusive === true)
+check('fixture persona group has two items', fixturePersona?.items.length === 2,
+  JSON.stringify(fixturePersona?.items?.map(i => i.id)))
+
+// ---------------------------------------------------------------------------
+// The shipped built-ins, mounted on their own against a path that does not
+// exist — the normal first-run case. The roster is deliberately kept to the
+// single persona group, and its bodies are files shipped inside this package.
+// ---------------------------------------------------------------------------
+const builtinRoutes = []
+const builtinCtx = {
+  effect (fn) { fn(); return () => {} },
+  webServer: { register (route) { builtinRoutes.push(route); return () => {} } },
+  inject (_deps, callback) {
+    callback({ systemPrompt: { context () { return () => {} }, variable () { return () => {} } } })
+  },
+}
+apply(builtinCtx, { path: join(smokeDir, 'absent.json'), statePath: join(smokeDir, 'builtin-state.json') })
+
+const builtinState = async () => {
+  const req = Readable.from([])
+  req.method = 'GET'
+  req.url = '/dsh-rp-control/state?sessionId=builtin-probe'
+  req.headers = { host: 'localhost:43120', 'content-type': 'application/json' }
+  const chunks = []
+  const res = {
+    headersSent: false, writableEnded: false, destroyed: false, status: 0,
+    writeHead (status) { this.status = status },
+    end (text) { this.writableEnded = true; chunks.push(text) },
+  }
+  await builtinRoutes.find(r => r.path === '/dsh-rp-control/state').handler(req, res)
+  return JSON.parse(chunks.join('') || '{}')
+}
+
+const builtin = await builtinState()
+check('the built-in roster carries the persona group alone',
+  builtin.groups?.length === 1 && builtin.groups[0].id === 'persona',
+  JSON.stringify(builtin.groups?.map(g => g.id)))
+const builtinPersona = builtin.groups?.[0]
+check('built-in persona group is exclusive', builtinPersona?.exclusive === true)
+check('built-in persona group has two items', builtinPersona?.items?.length === 2,
+  JSON.stringify(builtinPersona?.items?.map(i => i.id)))
+const shippedPersona = builtinPersona?.items?.[0]
 check('persona body is read from the packaged persona file',
   shippedPersona?.id === 'persona-example' && shippedPersona?.textFile === undefined
     && typeof shippedPersona?.text === 'string' && shippedPersona.text.length > 200,
@@ -150,60 +196,57 @@ check('default off: the variable answers the fixed fallback, not empty',
   promptVariable(sessionA) === RP_PROMPT_FALLBACK, JSON.stringify(promptVariable(sessionA)))
 
 // Single toggle on → next assembly sees it.
-const sw = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'style-plain', on: true })
-check('POST toggles style-plain on', sw.status === 200 && JSON.parse(sw.body || '{}').selection?.['style-plain'] === true, sw.body)
-check('style-plain injected', provider(sessionA).includes('【示例条目 · 平实白描】'))
+const sw = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'style-a', on: true })
+check('POST toggles style-a on', sw.status === 200 && JSON.parse(sw.body || '{}').selection?.['style-a'] === true, sw.body)
+check('style-a injected', provider(sessionA).includes('【文风甲】'))
 check('the variable carries the same text the context injects',
-  promptVariable(sessionA) === provider(sessionA) && promptVariable(sessionA).includes('【示例条目 · 平实白描】'),
+  promptVariable(sessionA) === provider(sessionA) && promptVariable(sessionA).includes('【文风甲】'),
   JSON.stringify(promptVariable(sessionA).slice(0, 40)))
 
-// The exclusive body group: an explicit pick joins the injection.
-const bodyA = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'body-a', on: true })
-check('body item A togglable', JSON.parse(bodyA.body || '{}').selection?.['body-a'] === true, bodyA.body)
-check('body item A injected', provider(sessionA).includes('【当前身体：示例 A】'))
+// The exclusive group: an explicit pick joins the injection.
+const radioA = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'radio-a', on: true })
+check('radio item A togglable', JSON.parse(radioA.body || '{}').selection?.['radio-a'] === true, radioA.body)
+check('radio item A injected', provider(sessionA).includes('【互斥甲】'))
 
-// Multi-item + cross-group order: style → writing → body.
-await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'writing-core', on: true })
+// Multi-item + cross-group order: style → radio → tail.
+await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'tail-a', on: true })
 const multi = provider(sessionA)
-check('multi-item concatenates style+writing+body',
-  multi.includes('【示例条目 · 平实白描】') && multi.includes('【示例条目 · 通用写作要求】')
-    && multi.includes('【当前身体：示例 A】'))
-check('cross-group order style<writing<body',
-  multi.indexOf('【示例条目 · 平实白描】') < multi.indexOf('【示例条目 · 通用写作要求】')
-    && multi.indexOf('【示例条目 · 通用写作要求】') < multi.indexOf('【当前身体：示例 A】'))
+check('multi-item concatenates style+radio+tail',
+  multi.includes('【文风甲】') && multi.includes('【互斥甲】') && multi.includes('【末组甲】'))
+check('cross-group order style<radio<tail',
+  multi.indexOf('【文风甲】') < multi.indexOf('【互斥甲】')
+    && multi.indexOf('【互斥甲】') < multi.indexOf('【末组甲】'))
 
-// Exclusive: switching body to B turns A off atomically.
-const bodyB = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'body-b', on: true })
-const bodyBState = JSON.parse(bodyB.body || '{}').selection || {}
-check('exclusive: B on, A off', bodyBState['body-b'] === true && bodyBState['body-a'] === undefined, JSON.stringify(bodyBState))
-const bodyBText = provider(sessionA)
-check('exclusive switched to body B', bodyBText.includes('【当前身体：示例 B】') && !bodyBText.includes('【当前身体：示例 A】'))
+// Exclusive: switching radio to B turns A off atomically.
+const radioB = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'radio-b', on: true })
+const radioBState = JSON.parse(radioB.body || '{}').selection || {}
+check('exclusive: B on, A off',
+  radioBState['radio-b'] === true && radioBState['radio-a'] === undefined, JSON.stringify(radioBState))
+const radioBText = provider(sessionA)
+check('exclusive switched to radio B',
+  radioBText.includes('【互斥乙】') && !radioBText.includes('【互斥甲】'))
 
-// Explicitly turning the body off stays off — nothing re-defaults it.
-const offBodyB = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'body-b', on: false })
-const offState = JSON.parse(offBodyB.body || '{}').selection || {}
-check('explicit off: no body', offState['body-b'] === undefined && offState['body-a'] === undefined, JSON.stringify(offState))
+// Explicitly turning it off stays off — nothing re-defaults it.
+const offRadioB = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'radio-b', on: false })
+const offState = JSON.parse(offRadioB.body || '{}').selection || {}
+check('explicit off: nothing in the group', offState['radio-b'] === undefined && offState['radio-a'] === undefined,
+  JSON.stringify(offState))
 const offText = provider(sessionA)
-check('explicit off: body absent from injection',
-  !offText.includes('【当前身体：示例 B】') && !offText.includes('【当前身体：示例 A】'))
+check('explicit off: the group is absent from the injection',
+  !offText.includes('【互斥乙】') && !offText.includes('【互斥甲】'))
 
-// The inlined persona rule injects verbatim.
-const personaOn = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'persona-example', on: true })
+// The persona item injects verbatim.
+const personaOn = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'persona-a', on: true })
 check('persona item togglable',
-  personaOn.status === 200 && JSON.parse(personaOn.body || '{}').selection?.['persona-example'] === true, personaOn.body)
-check('persona body injected verbatim', provider(sessionA).includes('# 示例人设'))
-
-// Cross-group: the image group (last) joins after the writing group.
-await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'image-anchor', on: true })
-const imgText = provider(sessionA)
-check('image item injected', imgText.includes('【示例条目 · 出图锚点（照抄）】'))
-check('image group joins after writing group',
-  imgText.indexOf('【示例条目 · 通用写作要求】') < imgText.indexOf('【示例条目 · 出图锚点（照抄）】'))
+  personaOn.status === 200 && JSON.parse(personaOn.body || '{}').selection?.['persona-a'] === true, personaOn.body)
+check('persona item injected verbatim', provider(sessionA).includes('【人设甲】'))
+check('the last fixture group joins after the persona group',
+  provider(sessionA).indexOf('【人设甲】') < provider(sessionA).indexOf('【末组甲】'))
 
 const unknownItem = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'nope', on: true })
 check('unknown item rejected', unknownItem.status === 400, unknownItem.body)
 
-const badOn = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'style-plain', on: 'yes' })
+const badOn = await state('POST', '/dsh-rp-control/state', { sessionId: 'session-A', itemId: 'style-a', on: 'yes' })
 check('non-boolean on rejected', badOn.status === 400, badOn.body)
 
 const noSession = await state('GET', '/dsh-rp-control/state')

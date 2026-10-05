@@ -85,8 +85,8 @@ try {
   check('GET reports the builtin source', initialBody.source === 'builtin', JSON.stringify(initialBody.source))
   check('GET reports the override path', initialBody.path === configFile, initialBody.path)
   check('GET reports no error', initialBody.error === undefined, JSON.stringify(initialBody.error))
-  check('GET returns the 6 builtin groups',
-    initialBody.groups?.length === 6 && initialBody.groups[0].id === 'style',
+  check('GET returns the builtin persona group alone',
+    initialBody.groups?.length === 1 && initialBody.groups[0].id === 'persona',
     JSON.stringify(initialBody.groups?.map(g => g.id)))
   const builtinPersona = initialBody.groups.find(g => g.id === 'persona').items[0]
   check('GET keeps the packaged persona body as a textFile, unresolved',
@@ -363,7 +363,7 @@ try {
   const damaged = json(await config('GET'))
   check('broken file → builtin source', damaged.source === 'builtin', JSON.stringify(damaged.source))
   check('broken file → reason reported', typeof damaged.error === 'string' && damaged.error.length > 0, JSON.stringify(damaged.error))
-  check('broken file → builtin roster kept', damaged.groups.length === 6, JSON.stringify(damaged.groups?.map(g => g.id)))
+  check('broken file → builtin roster kept', damaged.groups.length === 1, JSON.stringify(damaged.groups?.map(g => g.id)))
   check('broken file does not break assembly', typeof provider('s1') === 'string')
 
   writeFileSync(configFile, JSON.stringify({ groups: 'nope' }))
@@ -373,7 +373,7 @@ try {
 
   // 10) DELETE restores the builtin roster.
   const deleted = json(await config('DELETE'))
-  check('DELETE → 200 builtin', deleted.source === 'builtin' && deleted.groups.length === 6, JSON.stringify(deleted.source))
+  check('DELETE → 200 builtin', deleted.source === 'builtin' && deleted.groups.length === 1, JSON.stringify(deleted.source))
   check('DELETE removes the file', !existsSync(configFile))
   check('DELETE without a file is still 200', (await config('DELETE')).status === 200)
 
@@ -393,11 +393,12 @@ try {
   check('the example file round-trips',
     exampleBack.source === 'file' && exampleBack.groups.length === example.groups.length,
     JSON.stringify(exampleBack.groups?.map(g => g.id)))
-  check('the example file shows several defaults',
-    (exampleBack.groups[0]?.defaultItems ?? []).length === 2, JSON.stringify(exampleBack.groups[0]?.defaultItems))
-  check('the example file shows one default in the exclusive group',
-    JSON.stringify(exampleBack.groups[1]?.defaultItems) === '["body-a"]',
-    JSON.stringify(exampleBack.groups[1]?.defaultItems))
+  check('the example file shows one default in its exclusive group',
+    JSON.stringify(exampleBack.groups[0]?.defaultItems) === '["persona-example"]',
+    JSON.stringify(exampleBack.groups[0]?.defaultItems))
+  check('the example file shows the persona bindings',
+    Object.keys(exampleBack.modelPersona ?? {}).length === 2 && exampleBack.defaultPersona === 'persona-example',
+    JSON.stringify({ m: exampleBack.modelPersona, d: exampleBack.defaultPersona }))
 
   // 13) A write that cannot land is reported rather than thrown.
   rmSync(dir, { recursive: true, force: true })

@@ -2,10 +2,11 @@
 
 **DSH 里跑角色扮演对话的总控**：所有"要不要注入、注入哪一段"都从这里管。
 
-像酒馆的预设界面：**分组 + 条目独立开关、自由组合**。内置 6 组 10 条示例条目 ——
-**文风／情色／写作／身体／人格／出图** 都收在这里，开标准 agent 靠这几个开关就能组合出
-「某个人设 + 某副身体 + 某种文风 + 出图规则」。
+像酒馆的预设界面：**分组 + 条目独立开关、自由组合**。分几组、每组几条都由你定 ——
+文风、身体、出图规则、人格……都走同一套「分组 → 条目」模型。
 胶囊按钮 → 点开勾选 / 取消，每轮动态注入所有开启条目的正文。
+
+> 随包**只带一组**：`persona`（人格）。其余分组留给你自己加，见「怎么追加一个新配置项」。
 
 插件还自带一个 **agent preset「RP 扮演」**（id `rp`）：它整套照抄内置 standard preset 的工具栈，
 但把 persona 行换成 `{{rp_control_prompt}}` + `complete: true`，于是**该 preset 的系统提示词内容
@@ -14,7 +15,7 @@
 **人格可以随模型切换**：`modelPersona` 把 `"<provider>/<model>"` 绑到某个人设条目，未命中回落
 `defaultPersona`，两者都没有则完全按手选开关（见「人格随模型切换」）。
 
-> 内置名单里的正文全部是**占位示例**，每条都写着"把这里替换成你自己的……"。
+> 随包条目里的正文都是**占位示例**，写着"把这里替换成你自己的……"。
 > 它们是给你照着改的骨架，不是拿来直接用的成品。
 
 ## 现在能做什么
@@ -28,18 +29,18 @@
 
 ## 分组
 
+随包的内置名单只有一组：
+
 | 组 id | 名 | exclusive / default | 条目 |
 |---|---|---|---|
-| `style` | 文风 | — | 平实白描 / 细腻抒情（2 条示例） |
-| `nsfw` | 情色 | — | 描写示例（1 条示例） |
-| `writing` | 通用写作 | — | 写作核心要求（1 条示例） |
-| `body` | 身体 | exclusive=√, 无 `defaultItems` | 示例 A / 示例 B（2 条示例） |
-| `persona` | 人格 | exclusive=√, 无 `defaultItems` | 示例人设 / 内联示例（2 条示例） |
-| `image` | 出图 | — | 出图规则 / 出图锚点（2 条示例） |
+| `persona` | 人格 | exclusive=√, 无 `defaultItems` | 示例人设（引用随包的 `personas/example.md`）/ 内联示例（2 条） |
 
 `persona` 是**互斥组**（同一时刻只有一份人设），也是唯一一组正文放在**独立文件**里的：
 `personas/example.md` 是一个可复制的骨架；加人设 = 往 `personas/` 放一个 md +
 在 `persona` 组里加一条 `textFile` 引用。
+
+文风、身体、出图规则这些分组**不随包提供** —— 用覆盖文件按下面的格式自己加。
+`validateRpConfig` 只校验结构，不关心你分几组、叫什么名字。
 
 新增组/条目的接法：往 `src/groups.ts` 的 `BUILTIN_GROUPS`（或 `$DSH_HOME/rp-control.json`）里加 `GroupSpec`，
 注入函数 `renderInjection` 会按组 → 条目顺序自动拼接，**不需要改任何路由 / 上下文 / 注入代码**。
@@ -80,7 +81,7 @@ interface RpConfig  { groups: GroupSpec[], modelPersona?: Record<string, string>
   "items": [ { "id": "style-plain", "name": "平实白描", "text": "……" },
              { "id": "style-lyrical", "name": "细腻抒情", "text": "……" } ] } ] }
 ```
-（`$DSH_HOME/rp-control.json`、内置 `BUILTIN_GROUPS` 都吃这个格式；`rp-control.example.json` 是一份完整示例，测试里会校验它始终可用。）
+（`$DSH_HOME/rp-control.json`、内置 `BUILTIN_GROUPS` 都吃这个格式；`rp-control.example.json` 是一份示例，演示人格组与模型绑定，测试里会校验它始终可用。）
 
 大体量文本可以内联进 `text`，也可以让条目用 `textFile` 指过去（`textFile` 能力保留，配置页里也能填路径）：
 
@@ -102,7 +103,7 @@ interface RpConfig  { groups: GroupSpec[], modelPersona?: Record<string, string>
 **每次求值重新读**。
 **`textFile` 读取时过滤 `>` 开头的行**（那些是给人看的引用块，不进注入），并把 3+ 空行折叠成 1 个空行。
 文件读不到 / 内容为空 → 该条目**视为不可用**（菜单里不出现），并把原因记进加载错误；**绝不抛异常**。
-配置文件坏掉（JSON 语法错 / 字段不合法 / 组或条目全无效）→ 回退内置 6 组并报错，绝不拖垮提示组装；
+配置文件坏掉（JSON 语法错 / 字段不合法 / 组或条目全无效）→ 回退内置名单并报错，绝不拖垮提示组装；
 `modelPersona` / `defaultPersona` 与名单相互独立，名单坏掉时它们照常保留。
 
 ## 设置页「RP 开关」
@@ -214,7 +215,7 @@ interface RpConfig  { groups: GroupSpec[], modelPersona?: Record<string, string>
 | host | `src/state.ts` | `$DSH_HOME/rp-control-state.json` 的原子读/写（重启恢复） |
 | host | `src/rp-route.ts` | `GET ?sessionId=` 读、`POST {sessionId, itemId, on}` 切换；同时导出两条路由共用的 same-origin / JSON 帮手 |
 | host | `src/config-route.ts` | `/dsh-rp-control/config` 的 `GET` / `PUT` / `DELETE`，校验 + 原子写 + 恢复内置；整份文档（名单 + 人格绑定）一起读写 |
-| host | `src/groups.ts` | 内置 6 组 + 读 `$DSH_HOME/rp-control.json`（`loadRpRawConfig` 不展开 `textFile`）+ `textFile` 展开（`./` → 包根）/读取/过滤 `>` |
+| host | `src/groups.ts` | 内置名单（只带 persona 组）+ 读 `$DSH_HOME/rp-control.json`（`loadRpRawConfig` 不展开 `textFile`）+ `textFile` 展开（`./` → 包根）/读取/过滤 `>` |
 | host | `src/shared.ts` | 数据模型 + 路由/上下文/变量常量 + `renderInjection` + `validateRpConfig` + `resolvePersonaForModel` / `applyPersonaOverride` |
 | host | `personas/example.md` | 随包人设骨架（独立文件，`textFile` 引用；复制一份改成你自己的） |
 | host | `cordis.patch.yml` | 挂载插件本体 + 声明 `RP 扮演` agent preset |

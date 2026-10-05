@@ -137,12 +137,14 @@ try {
   // 7) A malformed file degrades to the built-in groups instead of failing.
   writeFileSync(file, '{ this is not json')
   const g7 = await groupsOf(mount({ path: file }).call)
-  check('broken JSON falls back to builtin', g7.some(g => g.id === 'style') && g7.reduce((n, g) => n + g.items.length, 0) === 10, JSON.stringify(g7.map(g => g.id)))
+  check('broken JSON falls back to builtin',
+    g7.some(g => g.id === 'persona') && g7.reduce((n, g) => n + g.items.length, 0) === 2,
+    JSON.stringify(g7.map(g => g.id)))
 
   // 8) Invalid fields (groups not an array) also fall back.
   writeFileSync(file, JSON.stringify({ groups: 'nope' }))
   const g8 = await groupsOf(mount({ path: file }).call)
-  check('non-array groups falls back to builtin', g8.some(g => g.id === 'style'), JSON.stringify(g8.map(g => g.id)))
+  check('non-array groups falls back to builtin', g8.some(g => g.id === 'persona'), JSON.stringify(g8.map(g => g.id)))
 
   // 9) Malformed entries are dropped, valid ones survive.
   writeFileSync(file, JSON.stringify({
@@ -157,7 +159,7 @@ try {
     groups: [{ id: 'p', name: 'P', items: [{ id: 'm', name: 'M', textFile: join(dir, 'nope.md') }] }],
   }))
   const g10 = await groupsOf(mount({ path: file }).call)
-  check('missing textFile drops item → builtin', g10.some(g => g.id === 'style'), JSON.stringify(g10.map(g => g.id)))
+  check('missing textFile drops item → builtin', g10.some(g => g.id === 'persona'), JSON.stringify(g10.map(g => g.id)))
 
   // 11) An empty textFile is likewise unavailable.
   writeFileSync(join(dir, 'empty.md'), '   ')
@@ -165,12 +167,12 @@ try {
     groups: [{ id: 'p', name: 'P', items: [{ id: 'm', name: 'M', textFile: join(dir, 'empty.md') }] }],
   }))
   const g11 = await groupsOf(mount({ path: file }).call)
-  check('empty textFile drops item → builtin', g11.some(g => g.id === 'style'), JSON.stringify(g11.map(g => g.id)))
+  check('empty textFile drops item → builtin', g11.some(g => g.id === 'persona'), JSON.stringify(g11.map(g => g.id)))
 
   // 12) A missing file is the normal case and reports nothing.
   const missing = mount({ path: join(dir, 'absent.json') })
   const g12 = await groupsOf(missing.call)
-  check('missing file uses builtin', g12.some(g => g.id === 'style'), JSON.stringify(g12.map(g => g.id)))
+  check('missing file uses builtin', g12.some(g => g.id === 'persona'), JSON.stringify(g12.map(g => g.id)))
   check('missing file injects nothing for an untouched session', missing.provider('never-touched') === '',
     JSON.stringify(missing.provider('never-touched').slice(0, 60)))
   const g12Persona = g12.find(g => g.id === 'persona')?.items?.[0]

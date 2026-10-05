@@ -6,7 +6,7 @@
  * write, read-back, off-clearing, exclusive-group round-trips, and the
  * fault-tolerant empty-state fallback.
  */
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -33,7 +33,7 @@ function mount (config) {
     effect (fn) { fn(); return () => {} },
     webServer: { register (r) { routes.push(r); return () => {} } },
     inject (_deps, callback) { callback(promptCtx) },
-  }, { path: join(dir, 'nope.json'), ...config })
+  }, { path: fixturePath, ...config })
   const provider = (sessionId) => contexts[0].text({ agent: { id: sessionId } })
   const promptVariable = (sessionId) => variables[0].provider({ agent: { id: sessionId } })
   const call = async (method, url, body) => {
@@ -54,6 +54,11 @@ function mount (config) {
 }
 
 const dir = mkdtempSync(join(tmpdir(), 'dsh-rp-state-'))
+
+// The shipped built-ins are deliberately just the persona group, so the
+// multi-group round-trips below run against a fixture roster instead.
+const fixturePath = join(dir, 'roster.json')
+cpSync(new URL('./fixtures/roster.json', import.meta.url), fixturePath)
 const stateFile = join(dir, 'rp-control-state.json')
 const GET = '/dsh-rp-control/state?sessionId=s1'
 const DIAG = '/dsh-rp-control/state?sessionId=s1&diag=1'
@@ -66,50 +71,50 @@ try {
   check('missing state file → nothing injected', a.provider('s1') === '', JSON.stringify(a.provider('s1').slice(0, 60)))
 
   // 2) A toggle persists immediately, and a fresh instance reads it back.
-  await a.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'style-plain', on: true })
-  check('state file written after POST', readFileSync(stateFile, 'utf8').includes('"style-plain": true'))
+  await a.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'style-a', on: true })
+  check('state file written after POST', readFileSync(stateFile, 'utf8').includes('"style-a": true'))
   const b = mount({ statePath: stateFile })
   const bSel = JSON.parse((await b.call('GET', GET)).body).selection
-  check('restart restores style-plain', bSel['style-plain'] === true, JSON.stringify(bSel))
-  check('restart provider injects item', b.provider('s1').includes('【示例条目 · 平实白描】'))
+  check('restart restores style-a', bSel['style-a'] === true, JSON.stringify(bSel))
+  check('restart provider injects item', b.provider('s1').includes('【文风甲】'))
 
-  // 3) Exclusive body switch persists: B on, A off across restart.
-  await b.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'body-a', on: true })
-  check('body A on before the exclusive switch', b.provider('s1').includes('【当前身体：示例 A】'))
-  await b.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'body-b', on: true })
+  // 3) Exclusive switch persists: B on, A off across restart.
+  await b.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'radio-a', on: true })
+  check('radio A on before the exclusive switch', b.provider('s1').includes('【互斥甲】'))
+  await b.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'radio-b', on: true })
   const c = mount({ statePath: stateFile })
   const cSel = JSON.parse((await c.call('GET', GET)).body).selection
-  check('restart restores exclusive body B', cSel['body-b'] === true && cSel['body-a'] === undefined, JSON.stringify(cSel))
-  check('restart provider injects body B',
-    c.provider('s1').includes('【当前身体：示例 B】') && !c.provider('s1').includes('【当前身体：示例 A】'))
+  check('restart restores exclusive radio B', cSel['radio-b'] === true && cSel['radio-a'] === undefined, JSON.stringify(cSel))
+  check('restart provider injects radio B',
+    c.provider('s1').includes('【互斥乙】') && !c.provider('s1').includes('【互斥甲】'))
 
-  // 4) Explicitly turning the body off stays off across restart (no re-default).
-  await c.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'body-b', on: false })
+  // 4) Explicitly turning it off stays off across restart (no re-default).
+  await c.call('POST', '/dsh-rp-control/state', { sessionId: 's1', itemId: 'radio-b', on: false })
   const d = mount({ statePath: stateFile })
   const dSel = JSON.parse((await d.call('GET', GET)).body).selection
-  check('restart keeps body off, not re-defaulted',
-    dSel['body-b'] === undefined && dSel['body-a'] === undefined, JSON.stringify(dSel))
-  check('restart provider has no body',
-    !d.provider('s1').includes('示例 A') && !d.provider('s1').includes('示例 B'))
+  check('restart keeps the group off, not re-defaulted',
+    dSel['radio-b'] === undefined && dSel['radio-a'] === undefined, JSON.stringify(dSel))
+  check('restart provider has nothing from that group',
+    !d.provider('s1').includes('互斥甲') && !d.provider('s1').includes('互斥乙'))
 
   // 5) Bad JSON → empty state + reason recorded in the diag probe.
   writeFileSync(stateFile, '{ this is not json')
   const e = mount({ statePath: stateFile })
-  check('bad JSON → nothing on', !e.provider('s1').includes('【当前身体：示例 A】'))
+  check('bad JSON → nothing on', !e.provider('s1').includes('【互斥甲】'))
   const eProbe = JSON.parse((await e.call('GET', DIAG)).body).probe
   check('bad JSON reason in probe', typeof eProbe?.stateError === 'string' && eProbe.stateError.length > 0, JSON.stringify(eProbe))
 
   // 6) Invalid structure (sessions not an object) → empty + reason.
   writeFileSync(stateFile, JSON.stringify({ version: 1, sessions: 'nope' }))
   const f = mount({ statePath: stateFile })
-  check('invalid structure → nothing on', !f.provider('s1').includes('【当前身体：示例 A】'))
+  check('invalid structure → nothing on', !f.provider('s1').includes('【互斥甲】'))
   const fProbe = JSON.parse((await f.call('GET', DIAG)).body).probe
   check('invalid structure reason in probe', typeof fProbe?.stateError === 'string', JSON.stringify(fProbe))
 
   // 7) Wrong value type (item flag is a string) → empty + reason.
-  writeFileSync(stateFile, JSON.stringify({ version: 1, sessions: { s1: { 'style-plain': 'yes' } } }))
+  writeFileSync(stateFile, JSON.stringify({ version: 1, sessions: { s1: { 'style-a': 'yes' } } }))
   const g = mount({ statePath: stateFile })
-  check('wrong value type → nothing on', !g.provider('s1').includes('【示例条目 · 平实白描】'))
+  check('wrong value type → nothing on', !g.provider('s1').includes('【文风甲】'))
   const gProbe = JSON.parse((await g.call('GET', DIAG)).body).probe
   check('wrong value type reason in probe', typeof gProbe?.stateError === 'string', JSON.stringify(gProbe))
 
@@ -122,10 +127,10 @@ try {
   // 9) Atomic write leaves a well-formed file and no stray .tmp.
   writeFileSync(stateFile, JSON.stringify({ version: 1, sessions: {} }))
   const i = mount({ statePath: stateFile })
-  await i.call('POST', '/dsh-rp-control/state', { sessionId: 's2', itemId: 'writing-core', on: true })
+  await i.call('POST', '/dsh-rp-control/state', { sessionId: 's2', itemId: 'tail-a', on: true })
   const raw = JSON.parse(readFileSync(stateFile, 'utf8'))
   check('persisted shape has version 1', raw.version === 1 && typeof raw.sessions === 'object', JSON.stringify(raw))
-  check('persisted sessions correct', raw.sessions.s2?.['writing-core'] === true, JSON.stringify(raw.sessions))
+  check('persisted sessions correct', raw.sessions.s2?.['tail-a'] === true, JSON.stringify(raw.sessions))
   check('no stray .tmp file', !existsSync(stateFile + '.tmp'))
 
   // 10) An untouched session's variable answers the fixed fallback, and a
