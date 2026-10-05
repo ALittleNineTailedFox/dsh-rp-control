@@ -1,0 +1,26 @@
+# 构建产物（tsc 出类型、tsdown 出 bundle）
+lib/
+dist/
+*.tsbuildinfo
+
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 临时 / 备份 / 日志
+*.log
+*.tmp
+*.bak
+*~
+.cache/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地私密配置：绝不要提交你自己的名单或人设
+.env
+.env.*
+*credentials*
+*secret*
