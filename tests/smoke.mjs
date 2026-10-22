@@ -187,7 +187,8 @@ check('packaged persona keeps its heading', shippedPersona?.text?.startsWith('# 
 check('packaged persona dropped human-only quote lines',
   shippedPersona?.text?.split('\n').every(line => !line.trimStart().startsWith('>')) === true)
 check('packaged persona ends on its last rule line',
-  shippedPersona?.text?.endsWith('自然会变成我。') === true)
+  shippedPersona?.text?.endsWith('那两个字就轻了。') === true,
+  JSON.stringify(shippedPersona?.text?.slice(-30)))
 
 // Default: nothing is on, so an untouched session injects nothing at all.
 check('default off: empty selection', Object.keys(first.selection).length === 0, JSON.stringify(first.selection))
