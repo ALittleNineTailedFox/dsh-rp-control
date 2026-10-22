@@ -33,11 +33,15 @@
 
 | 组 id | 名 | exclusive / default | 条目 |
 |---|---|---|---|
-| `persona` | 人格 | exclusive=√, 无 `defaultItems` | 示例人设（引用随包的 `personas/example.md`）/ 内联示例（2 条） |
+| `persona` | 人格 | exclusive=√, `defaultItems=["dafeiyu"]` | 大肥鱼（引用随包的 `personas/dafeiyu.md`） |
 
 `persona` 是**互斥组**（同一时刻只有一份人设），也是唯一一组正文放在**独立文件**里的：
-`personas/example.md` 是一个可复制的骨架；加人设 = 往 `personas/` 放一个 md +
+真实人设是 `personas/dafeiyu.md`（DeepSeek 蓝鲸娘的自述，只讲人格、不设场景规则），
+`personas/example.md` 是一份可复制的骨架；换人设 = 往 `personas/` 放一个 md +
 在 `persona` 组里加一条 `textFile` 引用。
+
+> **安装即用**：`defaultItems` 默认开这一条 —— 新机器装完就有完整人格，
+> 不需要再手工粘一遍守则。想关掉就在设置页取消「默认开」，或显式关一次。
 
 文风、身体、出图规则这些分组**不随包提供** —— 用覆盖文件按下面的格式自己加。
 `validateRpConfig` 只校验结构，不关心你分几组、叫什么名字。

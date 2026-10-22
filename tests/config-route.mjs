@@ -90,7 +90,7 @@ try {
     JSON.stringify(initialBody.groups?.map(g => g.id)))
   const builtinPersona = initialBody.groups.find(g => g.id === 'persona').items[0]
   check('GET keeps the packaged persona body as a textFile, unresolved',
-    builtinPersona.textFile === './personas/example.md' && builtinPersona.text === undefined,
+    builtinPersona.textFile === './personas/dafeiyu.md' && builtinPersona.text === undefined,
     JSON.stringify(builtinPersona))
   check('GET reports no text error for the builtin roster', initialBody.textError === undefined, initialBody.textError)
   check('GET reports no persona bindings for the builtin roster',

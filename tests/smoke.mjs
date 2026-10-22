@@ -176,18 +176,18 @@ check('the built-in roster carries the persona group alone',
   JSON.stringify(builtin.groups?.map(g => g.id)))
 const builtinPersona = builtin.groups?.[0]
 check('built-in persona group is exclusive', builtinPersona?.exclusive === true)
-check('built-in persona group has two items', builtinPersona?.items?.length === 2,
+check('built-in persona group has one item', builtinPersona?.items?.length === 1,
   JSON.stringify(builtinPersona?.items?.map(i => i.id)))
 const shippedPersona = builtinPersona?.items?.[0]
 check('persona body is read from the packaged persona file',
-  shippedPersona?.id === 'persona-example' && shippedPersona?.textFile === undefined
-    && typeof shippedPersona?.text === 'string' && shippedPersona.text.length > 200,
+  shippedPersona?.id === 'dafeiyu' && shippedPersona?.textFile === undefined
+    && typeof shippedPersona?.text === 'string' && shippedPersona.text.length > 500,
   JSON.stringify({ id: shippedPersona?.id, textFile: shippedPersona?.textFile, textLength: shippedPersona?.text?.length }))
-check('packaged persona keeps its heading', shippedPersona?.text?.startsWith('# 示例人设') === true, shippedPersona?.text?.slice(0, 24))
+check('packaged persona keeps its heading', shippedPersona?.text?.startsWith('# 大肥鱼') === true, shippedPersona?.text?.slice(0, 24))
 check('packaged persona dropped human-only quote lines',
   shippedPersona?.text?.split('\n').every(line => !line.trimStart().startsWith('>')) === true)
 check('packaged persona ends on its last rule line',
-  shippedPersona?.text?.endsWith('只写这个角色自己看得到、听得到的东西') === true)
+  shippedPersona?.text?.endsWith('自然会变成我。') === true)
 
 // Default: nothing is on, so an untouched session injects nothing at all.
 check('default off: empty selection', Object.keys(first.selection).length === 0, JSON.stringify(first.selection))

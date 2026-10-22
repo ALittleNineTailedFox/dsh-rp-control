@@ -138,7 +138,7 @@ try {
   writeFileSync(file, '{ this is not json')
   const g7 = await groupsOf(mount({ path: file }).call)
   check('broken JSON falls back to builtin',
-    g7.some(g => g.id === 'persona') && g7.reduce((n, g) => n + g.items.length, 0) === 2,
+    g7.some(g => g.id === 'persona') && g7.reduce((n, g) => n + g.items.length, 0) === 1,
     JSON.stringify(g7.map(g => g.id)))
 
   // 8) Invalid fields (groups not an array) also fall back.
@@ -173,7 +173,8 @@ try {
   const missing = mount({ path: join(dir, 'absent.json') })
   const g12 = await groupsOf(missing.call)
   check('missing file uses builtin', g12.some(g => g.id === 'persona'), JSON.stringify(g12.map(g => g.id)))
-  check('missing file injects nothing for an untouched session', missing.provider('never-touched') === '',
+  check('missing file injects the packaged persona for an untouched session',
+    missing.provider('never-touched').includes('大肥鱼'),
     JSON.stringify(missing.provider('never-touched').slice(0, 60)))
   const g12Persona = g12.find(g => g.id === 'persona')?.items?.[0]
   check('builtin persona body ships as a packaged file, resolved to its text',
@@ -229,17 +230,17 @@ try {
   process.env.DSH_HOME = dir
   try {
     mkdirSync(join(dir, 'personas'), { recursive: true })
-    writeFileSync(join(dir, 'personas', 'example.md'), '家目录里的同名文件')
+    writeFileSync(join(dir, 'personas', 'dafeiyu.md'), '家目录里的同名文件')
     writeFileSync(file, JSON.stringify({
       groups: [{ id: 'persona', name: '人格', exclusive: true,
-        items: [{ id: 'persona-example', name: '示例人设', textFile: './personas/example.md' }] }],
+        items: [{ id: 'dafeiyu', name: '大肥鱼', textFile: './personas/dafeiyu.md' }] }],
     }))
     const packaged = mount({ path: file })
     const g16 = await groupsOf(packaged.call)
     const packagedText = g16[0]?.items?.[0]?.text
     check('a ./ textFile resolves against the plugin package root, not DSH_HOME',
-      typeof packagedText === 'string' && packagedText.startsWith('# 示例人设') && packagedText.includes('示例人设'),
-      JSON.stringify({ first: packagedText?.slice(0, 24), home: join(dir, 'personas', 'example.md') }))
+      typeof packagedText === 'string' && packagedText.startsWith('# 大肥鱼') && packagedText.includes('DeepSeek 那头蓝鲸'),
+      JSON.stringify({ first: packagedText?.slice(0, 24), home: join(dir, 'personas', 'dafeiyu.md') }))
     check('the ./ textFile is the same body the built-in roster injects',
       packagedText === g12Persona?.text,
       JSON.stringify({ packaged: packagedText?.length, builtin: g12Persona?.text?.length }))

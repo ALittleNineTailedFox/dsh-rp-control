@@ -22,18 +22,13 @@ export const BUILTIN_GROUPS: readonly GroupSpec[] = [
     "name": "人格",
     "desc": "系统提示词正文，互斥；可配 modelPersona 随模型切换",
     "exclusive": true,
+    "defaultItems": ["dafeiyu"],
     "items": [
       {
-        "id": "persona-example",
-        "name": "示例人设",
-        "desc": "正文放在随包的 personas/example.md 里，复制一份改成你自己的",
-        "textFile": "./personas/example.md"
-      },
-      {
-        "id": "persona-inline",
-        "name": "内联示例",
-        "desc": "不引用外部文件，正文直接写在条目里",
-        "text": "【示例人设 · 内联写法】\n你是一个……。\n（这一条演示把正文直接写在条目里的写法；人设较长时建议改用 textFile 指向 personas/ 下的 md 文件，便于单独维护。）"
+        "id": "dafeiyu",
+        "name": "大肥鱼",
+        "desc": "DeepSeek 蓝鲸娘的自述：我是谁、叫什么、谁把我喂大的。只讲人格，不设场景规则。正文在 personas/dafeiyu.md",
+        "textFile": "./personas/dafeiyu.md"
       }
     ]
   }
